@@ -14,7 +14,6 @@ const SYSTEM_PROMPT =
 
 export async function POST(request: Request) {
   try {
-    // Parser tolerante que aceita messages e descarta model sem quebrar
     const body = await request.json().catch(() => null)
     
     if (!body || !body.messages || !Array.isArray(body.messages)) {
@@ -33,7 +32,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // 1. Monta o histórico usando tokens universais para evitar quebras de contexto
+    // 1. Monta o histórico
     let prompt = `<|im_start|>system\n${SYSTEM_PROMPT}<|im_end|>\n`
     for (const msg of messages) {
       prompt += `<|im_start|>${msg.role}\n${msg.content}<|im_end|>\n`
@@ -42,7 +41,7 @@ export async function POST(request: Request) {
 
     console.log(`[API Chat] Enviando requisição para: ${LLAMA_SERVER_URL}/completion`)
 
-    // 2. Realiza a chamada com timeout curto para evitar que o Node trave
+    // 2. Chamada direta ao llama-server que já está de pé
     const res = await fetch(`${LLAMA_SERVER_URL}/completion`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -52,7 +51,7 @@ export async function POST(request: Request) {
         stream: false,
         n_predict: 512
       }),
-      signal: AbortSignal.timeout(60_000), // Timeout de 60 segundos
+      signal: AbortSignal.timeout(90_000), // Timeout de 90 segundos
     })
 
     if (!res.ok) {
@@ -67,18 +66,15 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("[v0] Erro na rota /api/chat:", error)
     
-    // Captura o erro real de forma explícita
     let errorMessage = "Erro interno ao processar a requisição."
     if (error instanceof Error) {
       errorMessage = `${error.name}: ${error.message}`
       
-      // Traduz erros comuns de conexão para ficar fácil de ler no frontend
       if (error.message.includes("fetch failed")) {
-        errorMessage = "Conexão Recusada: O llama-server na porta 8080 está offline ou caiu. Execute ./iniciar.sh novamente."
+        errorMessage = "Conexão Recusada: O llama-server está offline na porta 8080. Reinicie o script ./iniciar.sh."
       }
     }
 
-    // Retornamos o erro real e legível diretamente para o console do navegador
     return Response.json({ error: errorMessage }, { status: 500 })
   }
 }

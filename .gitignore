@@ -41,3 +41,14 @@ yarn-error.log*
 next-env.d.ts
 models/
 *.gguf
+
+# Logs locais
+logs/
+*.log
+
+# Arquivos de análise
+repomix-output.xml
+
+# Cache do Next e dependências
+.next/
+node_modules/
